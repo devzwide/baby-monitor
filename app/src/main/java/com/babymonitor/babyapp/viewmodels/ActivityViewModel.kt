@@ -1,0 +1,355 @@
+package com.babymonitor.babyapp.viewmodels
+
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.babymonitor.babyapp.models.Diaper
+import com.babymonitor.babyapp.models.Feeding
+import com.babymonitor.babyapp.models.Health
+import com.babymonitor.babyapp.models.Sleep
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class ActivityViewModel : ViewModel() {
+    private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    val feedings = mutableStateListOf<Feeding>()
+    val sleeps = mutableStateListOf<Sleep>()
+    val diapers = mutableStateListOf<Diaper>()
+    val healthEntries = mutableStateListOf<Health>()
+
+    // Suggestions based on activity data
+    val suggestions = mutableStateListOf<String>()
+
+    private var feedingListener: ListenerRegistration? = null
+    private var sleepListener: ListenerRegistration? = null
+    private var diaperListener: ListenerRegistration? = null
+    private var healthListener: ListenerRegistration? = null
+
+    private val _currentBabyId = MutableStateFlow<String?>(null)
+    val currentBabyId: StateFlow<String?> = _currentBabyId
+
+    // Remove encryption for simplicity - it's causing issues
+    init {
+        auth.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                registerListenersForUser(user.uid)
+            } else {
+                removeAllListeners()
+                clearLocalCaches()
+            }
+        }
+        auth.currentUser?.let { registerListenersForUser(it.uid) }
+    }
+
+    fun setCurrentBabyId(babyId: String) {
+        _currentBabyId.value = babyId
+        // Restart listeners with new baby ID
+        auth.currentUser?.let { registerListenersForUser(it.uid) }
+    }
+
+    private fun registerListenersForUser(uid: String) {
+        removeAllListeners()
+
+        val currentBabyId = _currentBabyId.value
+        if (currentBabyId.isNullOrEmpty()) return
+
+        // Feedings listener
+        feedingListener = db.collection("users").document(uid)
+            .collection("feedings")
+            .whereEqualTo("babyID", currentBabyId)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+
+                feedings.clear()
+                snapshot?.documents?.forEach { doc ->
+                    val feeding = doc.toObject(Feeding::class.java)
+                    if (feeding != null) {
+                        feedings.add(feeding)
+                    }
+                }
+                refreshData() // Refresh suggestions after updating feedings
+            }
+
+        // Sleeps listener
+        sleepListener = db.collection("users").document(uid)
+            .collection("sleeps")
+            .whereEqualTo("babyID", currentBabyId)
+            .orderBy("startTime", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+
+                sleeps.clear()
+                snapshot?.documents?.forEach { doc ->
+                    val sleep = doc.toObject(Sleep::class.java)
+                    if (sleep != null) {
+                        sleeps.add(sleep)
+                    }
+                }
+                refreshData() // Refresh suggestions after updating sleeps
+            }
+
+        // Diapers listener
+        diaperListener = db.collection("users").document(uid)
+            .collection("diapers")
+            .whereEqualTo("babyID", currentBabyId)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+
+                diapers.clear()
+                snapshot?.documents?.forEach { doc ->
+                    val diaper = doc.toObject(Diaper::class.java)
+                    if (diaper != null) {
+                        diapers.add(diaper)
+                    }
+                }
+                refreshData() // Refresh suggestions after updating diapers
+            }
+
+        // Health entries listener
+        healthListener = db.collection("users").document(uid)
+            .collection("health")
+            .whereEqualTo("babyID", currentBabyId)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+
+                healthEntries.clear()
+                snapshot?.documents?.forEach { doc ->
+                    val health = doc.toObject(Health::class.java)
+                    if (health != null) {
+                        healthEntries.add(health)
+                    }
+                }
+                refreshData() // Refresh suggestions after updating health entries
+            }
+    }
+
+    private fun removeAllListeners() {
+        feedingListener?.remove()
+        sleepListener?.remove()
+        diaperListener?.remove()
+        healthListener?.remove()
+        feedingListener = null
+        sleepListener = null
+        diaperListener = null
+        healthListener = null
+    }
+
+    private fun clearLocalCaches() {
+        feedings.clear()
+        sleeps.clear()
+        diapers.clear()
+        healthEntries.clear()
+        _currentBabyId.value = null
+    }
+
+    // Simplified add functions without encryption
+    fun addFeeding(feeding: Feeding, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null && _currentBabyId.value != null) {
+                    val feedingWithIds = feeding.copy(
+                        entryID = db.collection("users").document().id,
+                        babyID = _currentBabyId.value!!
+                    )
+                    db.collection("users").document(user.uid)
+                        .collection("feedings")
+                        .document(feedingWithIds.entryID)
+                        .set(feedingWithIds)
+                        .addOnSuccessListener { callback(Result.success(Unit)) }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User or baby ID missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    fun addSleep(sleep: Sleep, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null && _currentBabyId.value != null) {
+                    val sleepWithIds = sleep.copy(
+                        entryID = db.collection("users").document().id,
+                        babyID = _currentBabyId.value!!
+                    )
+                    db.collection("users").document(user.uid)
+                        .collection("sleeps")
+                        .document(sleepWithIds.entryID)
+                        .set(sleepWithIds)
+                        .addOnSuccessListener { callback(Result.success(Unit)) }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User or baby ID missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    fun addDiaper(diaper: Diaper, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null && _currentBabyId.value != null) {
+                    val diaperWithIds = diaper.copy(
+                        entryID = db.collection("users").document().id,
+                        babyID = _currentBabyId.value!!
+                    )
+                    db.collection("users").document(user.uid)
+                        .collection("diapers")
+                        .document(diaperWithIds.entryID)
+                        .set(diaperWithIds)
+                        .addOnSuccessListener { callback(Result.success(Unit)) }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User or baby ID missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    fun addHealth(health: Health, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null && _currentBabyId.value != null) {
+                    val healthWithIds = health.copy(
+                        entryID = db.collection("users").document().id,
+                        babyID = _currentBabyId.value!!
+                    )
+                    db.collection("users").document(user.uid)
+                        .collection("health")
+                        .document(healthWithIds.entryID)
+                        .set(healthWithIds)
+                        .addOnSuccessListener { callback(Result.success(Unit)) }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User or baby ID missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    // Helper functions to get latest entries
+    fun getLatestFeeding(): Feeding? = feedings.firstOrNull()
+    fun getLatestSleep(): Sleep? = sleeps.firstOrNull()
+    fun getLatestDiaper(): Diaper? = diapers.firstOrNull()
+    fun getLatestHealth(): Health? = healthEntries.firstOrNull()
+
+    // Suggestions generation logic
+    private fun generateSuggestions() {
+        suggestions.clear()
+        if (feedings.size > 5) {
+            suggestions.add("Your baby is feeding well! Keep up the routine.")
+        }
+        if (sleeps.size > 5) {
+            suggestions.add("Great sleep pattern! Consistency helps.")
+        }
+        if (diapers.size > 5) {
+            suggestions.add("Diaper changes are regular. Monitor for any changes.")
+        }
+        if (healthEntries.any { it.notes?.contains("fever", true) ?: false }) {
+            suggestions.add("Monitor baby's temperature and consult a doctor if needed.")
+        }
+        if (suggestions.isEmpty()) {
+            suggestions.add("Log more activities for personalized insights!")
+        }
+    }
+
+    // Call this after listeners update local lists
+    private fun refreshData() {
+        generateSuggestions()
+        // ...other refresh logic if needed...
+    }
+
+    var isRefreshing = mutableStateOf(false)
+        private set
+
+    fun refreshAllData() {
+        isRefreshing.value = true
+        val user = auth.currentUser
+        val babyId = _currentBabyId.value
+        if (user != null && babyId != null) {
+            // Manually reload all activity data
+            db.collection("users").document(user.uid).collection("feedings")
+                .whereEqualTo("babyID", babyId)
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().addOnSuccessListener { snapshot ->
+                    feedings.clear()
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(Feeding::class.java)?.let { feedings.add(it) }
+                    }
+                    refreshData()
+                    isRefreshing.value = false
+                }.addOnFailureListener {
+                    isRefreshing.value = false
+                }
+            db.collection("users").document(user.uid).collection("sleeps")
+                .whereEqualTo("babyID", babyId)
+                .orderBy("startTime", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().addOnSuccessListener { snapshot ->
+                    sleeps.clear()
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(Sleep::class.java)?.let { sleeps.add(it) }
+                    }
+                    refreshData()
+                    isRefreshing.value = false
+                }.addOnFailureListener {
+                    isRefreshing.value = false
+                }
+            db.collection("users").document(user.uid).collection("diapers")
+                .whereEqualTo("babyID", babyId)
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().addOnSuccessListener { snapshot ->
+                    diapers.clear()
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(Diaper::class.java)?.let { diapers.add(it) }
+                    }
+                    refreshData()
+                    isRefreshing.value = false
+                }.addOnFailureListener {
+                    isRefreshing.value = false
+                }
+            db.collection("users").document(user.uid).collection("health")
+                .whereEqualTo("babyID", babyId)
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get().addOnSuccessListener { snapshot ->
+                    healthEntries.clear()
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(Health::class.java)?.let { healthEntries.add(it) }
+                    }
+                    refreshData()
+                    isRefreshing.value = false
+                }.addOnFailureListener {
+                    isRefreshing.value = false
+                }
+        } else {
+            isRefreshing.value = false
+        }
+    }
+
+    override fun onCleared() {
+        removeAllListeners()
+        super.onCleared()
+    }
+}

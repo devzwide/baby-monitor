@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core Brand Colors (Matching Compose Theme) -->
+    <color name="primary_soft">#FF70A6</color> <!-- Soft Pink -->
+    <color name="secondary_calm">#D0EFFF</color> <!-- Pale Sky Blue -->
+    <color name="background_light">#FAFAFA</color> <!-- Near White -->
+
+    <!-- Standard Neutrals -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Pink background circle for visibility -->
+    <path
+        android:fillColor="#FFB6D5"
+        android:pathData="M54,54 m-54,0 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0" />
+
+    <!-- Light blue accent circle behind moon -->
+    <path
+        android:fillColor="#AEEBFF"
+        android:pathData="M54,54 m-36,0 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
+
+    <!-- Main icon group: translated and scaled for prominence -->
+    <group android:translateX="25" android:translateY="25">
+
+        <!-- Large Crescent Moon (White - the primary baby monitor symbol) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M48 20 C 48 28.8 41.8 36 34 36 C 26.2 36 20 28.8 20 20 C 20 11.2 26.2 4 34 4 C 41.8 4 48 11.2 48 20 Z"
+            android:scaleX="1.2"
+            android:scaleY="1.2"
+            android:translateX="5"
+            android:translateY="5" />
+
+        <!-- Small Accent Star 1 (Soft Pink) -->
+        <path
+            android:fillColor="#FF70A6"
+            android:pathData="M70 10 L72 16 L78 17 L73 21 L74 27 L70 24 L66 27 L67 21 L62 17 L68 16 Z" />
+
+        <!-- Small Accent Star 2 (Soft Pink, slightly smaller) -->
+        <path
+            android:fillColor="#FF70A6"
+            android:pathData="M50 50 L52 56 L58 57 L53 61 L54 67 L50 64 L46 67 L47 61 L42 57 L48 56 Z"
+            android:scaleX="0.7"
+            android:scaleY="0.7" />
+
+        <!-- Small Accent Star 3 (Soft Pink, smallest) -->
+        <path
+            android:fillColor="#FF70A6"
+            android:pathData="M10 65 L12 71 L18 72 L13 76 L14 82 L10 79 L6 82 L7 76 L2 72 L8 71 Z"
+            android:scaleX="0.5"
+            android:scaleY="0.5" />
+    </group>
+</vector>
