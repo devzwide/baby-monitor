@@ -46,14 +46,7 @@ fun HomeScreen(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
 ) {
-    // Automatically refresh on first composition and every 30 seconds
-    LaunchedEffect(Unit) {
-        onRefresh()
-        while (true) {
-            kotlinx.coroutines.delay(30000)
-            onRefresh()
-        }
-    }
+    // Manual refresh only, removed auto-refresh
 
     val summaryItems = listOf(
         SummaryItem(

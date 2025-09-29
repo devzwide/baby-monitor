@@ -76,7 +76,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             isRefreshing = activityViewModel.isRefreshing.value,
-                            onRefresh = { activityViewModel.refreshAllData() }
+                            onRefresh = {
+                                activityViewModel.refreshAllData()
+                                userDataViewModel.refreshUserData()
+                            }
                         )
                     }
                     composable("tracking") {
@@ -115,7 +118,10 @@ class MainActivity : ComponentActivity() {
                             healthEntries = activityViewModel.healthEntries,
                             suggestions = activityViewModel.suggestions,
                             isRefreshing = activityViewModel.isRefreshing.value,
-                            onRefresh = { activityViewModel.refreshAllData() }
+                            onRefresh = {
+                                activityViewModel.refreshAllData()
+                                userDataViewModel.refreshUserData()
+                            }
                         )
                     }
                 }

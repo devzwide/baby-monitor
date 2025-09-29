@@ -76,4 +76,8 @@ class UserDataViewModel : ViewModel() {
     fun getCurrentBabyId(): String? {
         return currentBaby.value?.babyID
     }
+
+    fun refreshUserData() {
+        auth.currentUser?.let { loadUserData(it.uid) }
+    }
 }
