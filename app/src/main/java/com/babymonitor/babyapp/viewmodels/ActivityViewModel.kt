@@ -290,6 +290,8 @@ class ActivityViewModel : ViewModel() {
         val user = auth.currentUser
         val babyId = _currentBabyId.value
         if (user != null && babyId != null) {
+            // Re-attach Firestore listeners to ensure UI updates
+            registerListenersForUser(user.uid)
             // Manually reload all activity data
             db.collection("users").document(user.uid).collection("feedings")
                 .whereEqualTo("babyID", babyId)
