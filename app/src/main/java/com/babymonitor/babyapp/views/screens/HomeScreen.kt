@@ -58,7 +58,7 @@ fun HomeScreen(
     val summaryItems = listOf(
         SummaryItem(
             title = "LAST FEED",
-            value = latestFeeding?.let { timeAgo(it.timestamp) } ?: "NO DATA",
+            value = if (latestFeeding != null) "The baby has been fed" else "NO DATA",
             backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             textColor = MaterialTheme.colorScheme.primary
         ),

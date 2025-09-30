@@ -71,13 +71,14 @@ class ActivityViewModel : ViewModel() {
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
 
+                val validFeedings = snapshot?.documents
+                    ?.mapNotNull { it.toObject(Feeding::class.java) }
+                    ?.filter { it.timestamp > 946684800000L }
+                    ?.sortedByDescending { it.timestamp }
+                    ?.take(100)
+
                 feedings.clear()
-                snapshot?.documents?.forEach { doc ->
-                    val feeding = doc.toObject(Feeding::class.java)
-                    if (feeding != null) {
-                        feedings.add(feeding)
-                    }
-                }
+                if (validFeedings != null) feedings.addAll(validFeedings)
                 refreshData() // Refresh suggestions after updating feedings
             }
 
@@ -166,9 +167,11 @@ class ActivityViewModel : ViewModel() {
             try {
                 val user = auth.currentUser
                 if (user != null && _currentBabyId.value != null) {
+                    val now = System.currentTimeMillis()
                     val feedingWithIds = feeding.copy(
                         entryID = db.collection("users").document().id,
-                        babyID = _currentBabyId.value!!
+                        babyID = _currentBabyId.value!!,
+                        timestamp = if (feeding.timestamp > 946684800000L) feeding.timestamp else now
                     )
                     db.collection("users").document(user.uid)
                         .collection("feedings")
@@ -411,10 +414,13 @@ class ActivityViewModel : ViewModel() {
                 .whereEqualTo("babyID", babyId)
                 .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get().addOnSuccessListener { snapshot ->
+                    val validFeedings = snapshot.documents
+                        .mapNotNull { it.toObject(Feeding::class.java) }
+                        .filter { it.timestamp > 946684800000L }
+                        .sortedByDescending { it.timestamp }
+                        .take(100)
                     feedings.clear()
-                    snapshot.documents.forEach { doc ->
-                        doc.toObject(Feeding::class.java)?.let { feedings.add(it) }
-                    }
+                    feedings.addAll(validFeedings)
                     refreshData()
                     isRefreshing.value = false
                 }.addOnFailureListener {
