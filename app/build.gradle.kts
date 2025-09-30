@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -75,5 +76,7 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.navigation.compose)
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
 
 }

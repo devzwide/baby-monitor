@@ -1,10 +1,12 @@
 package com.babymonitor.babyapp.viewmodels
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.babymonitor.babyapp.controllers.AuthController
 import com.babymonitor.babyapp.data.FirebaseAuthManager
 import com.babymonitor.babyapp.models.Baby
 import com.babymonitor.babyapp.models.Parent
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -21,6 +23,9 @@ class AuthViewModel : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
+
+    private val auth = FirebaseAuth.getInstance()
+    val resetPasswordResult = mutableStateOf<Result<String>?>(null)
 
     fun signIn(email: String, password: String) {
         _authState.value = AuthState.Loading
@@ -52,4 +57,15 @@ class AuthViewModel : ViewModel() {
     }
 
     fun isUserSignedIn(): Boolean = authController.isUserSignedIn()
+
+    fun sendPasswordResetEmail(email: String) {
+        resetPasswordResult.value = null
+        auth.sendPasswordResetEmail(email)
+            .addOnSuccessListener {
+                resetPasswordResult.value = Result.success("Password reset email sent.")
+            }
+            .addOnFailureListener { e ->
+                resetPasswordResult.value = Result.failure(e)
+            }
+    }
 }

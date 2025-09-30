@@ -1,5 +1,6 @@
 package com.babymonitor.babyapp.views.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +16,8 @@ import com.babymonitor.babyapp.models.Diaper
 import com.babymonitor.babyapp.models.Feeding
 import com.babymonitor.babyapp.models.Health
 import com.babymonitor.babyapp.models.Sleep
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +30,7 @@ fun ReportsScreen(
     isRefreshing: Boolean,
     onRefresh: () -> Unit
 ) {
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy, h:mm a", Locale.getDefault()) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -41,331 +45,303 @@ fun ReportsScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
                 actions = {
-                    // Refresh button without icon
-                    TextButton(
-                        onClick = onRefresh,
-                        enabled = !isRefreshing
-                    ) {
+                    TextButton(onClick = onRefresh, enabled = !isRefreshing) {
                         if (isRefreshing) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onBackground
+                                color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Text(
-                                "REFRESH",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                            )
+                            Text("Refresh", fontSize = MaterialTheme.typography.titleLarge.fontSize)
                         }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        // Show loading indicator when refreshing
         if (isRefreshing) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        strokeWidth = 4.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "Refreshing analytics...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    strokeWidth = 4.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Refreshing analytics...", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
             Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.padding(paddingValues).verticalScroll(rememberScrollState())
             ) {
-                // Header Section
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Activity Details",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    // Feeding Activities
-                    Text(
-                        text = "Feeding Activities",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    if (feedings.isEmpty()) {
-                        Text("No feeding records.", color = Color.Gray)
-                    } else {
-                        feedings.forEach { feeding ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text("Type: ${feeding.feedingType}", fontWeight = FontWeight.Bold)
-                                    feeding.amount?.let { Text("Amount: $it ${feeding.amountUnit ?: ""}") }
-                                    feeding.side?.let { Text("Side: $it") }
-                                    Text("Duration: ${feeding.durationMinutes} min")
-                                    Text("Notes: ${feeding.notes ?: "None"}")
-                                }
-                            }
-                        }
-                    }
-
-                    // Sleep Activities
-                    Text(
-                        text = "Sleep Activities",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    if (sleeps.isEmpty()) {
-                        Text("No sleep records.", color = Color.Gray)
-                    } else {
-                        sleeps.forEach { sleep ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text("Duration: ${sleep.durationMinutes} min")
-                                    Text("Location: ${sleep.sleepLocation ?: "Unknown"}")
-                                    Text("Type: ${if (sleep.isNap) "Nap" else "Night"}")
-                                    Text("Notes: ${sleep.notes ?: "None"}")
-                                }
-                            }
-                        }
-                    }
-
-                    // Diaper Activities
-                    Text(
-                        text = "Diaper Activities",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    if (diapers.isEmpty()) {
-                        Text("No diaper records.", color = Color.Gray)
-                    } else {
-                        diapers.forEach { diaper ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text("Type: ${diaper.type}", fontWeight = FontWeight.Bold)
-                                    Text("Color: ${diaper.color ?: "Unknown"}")
-                                    Text("Consistency: ${diaper.consistency ?: "Unknown"}")
-                                    Text("Notes: ${diaper.notes ?: "None"}")
-                                }
-                            }
-                        }
-                    }
-
-                    // Health Activities
-                    Text(
-                        text = "Health Activities",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    if (healthEntries.isEmpty()) {
-                        Text("No health records.", color = Color.Gray)
-                    } else {
-                        healthEntries.forEach { health ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text("Type: ${health.metricType}", fontWeight = FontWeight.Bold)
-                                    Text("Value: ${health.value} ${health.unit}")
-                                    health.medicationName?.let { Text("Medication: $it") }
-                                    Text("Notes: ${health.notes ?: "None"}")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Averages Section
+                ActivityAnalyticsSummary(feedings, sleeps, diapers, healthEntries)
+                // Instructions
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Text(
-                            "DAILY AVERAGES",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(bottom = 20.dp)
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            AverageStat(
-                                label = "SLEEP",
-                                value = "${if (sleeps.isNotEmpty()) sleeps.map { it.durationMinutes }.average().toInt() else 0} min",
-                                textColor = MaterialTheme.colorScheme.primary
-                            )
-                            AverageStat(
-                                label = "FEEDINGS",
-                                value = "${feedings.size}",
-                                textColor = MaterialTheme.colorScheme.secondary
-                            )
-                            AverageStat(
-                                label = "DIAPERS",
-                                value = "${diapers.size}",
-                                textColor = MaterialTheme.colorScheme.tertiary
-                            )
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("ℹ️", fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Tap refresh to update.", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Recent Activity Section (replaces chart)
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                ) {
-                    Text(
-                        "RECENT ACTIVITY SUMMARY",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
+                // Suggestions
+                if (suggestions.isNotEmpty()) {
                     Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Column(modifier = Modifier.padding(24.dp)) {
-                            Text(
-                                "LAST 7 DAYS SUMMARY",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-
-                            // Sleep summary
-                            ActivitySummaryItem(
-                                label = "TOTAL SLEEP TIME",
-                                value = "${sleeps.sumOf { it.durationMinutes } / 60}h ${sleeps.sumOf { it.durationMinutes } % 60}m",
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Feeding summary
-                            ActivitySummaryItem(
-                                label = "TOTAL FEEDINGS",
-                                value = "${feedings.size}",
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Diaper summary
-                            ActivitySummaryItem(
-                                label = "DIAPER CHANGES",
-                                value = "${diapers.size}",
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Health summary
-                            ActivitySummaryItem(
-                                label = "HEALTH CHECKS",
-                                value = "${healthEntries.size}",
-                                color = MaterialTheme.colorScheme.error
-                            )
+                        Column(Modifier.padding(16.dp)) {
+                            Text("💡 Personalized Suggestions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            suggestions.forEach { suggestion ->
+                                Text("• $suggestion", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Suggestions Section
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                ) {
-                    Text(
-                        "PERSONALIZED SUGGESTIONS",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    val suggestionsToShow = if (suggestions.isNotEmpty()) suggestions else generateSuggestions(feedings, sleeps, diapers, healthEntries)
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        suggestionsToShow.take(5).forEachIndexed { index, suggestion ->
-                            SuggestionItem(
-                                text = suggestion,
-                                number = index + 1,
-                                color = when (index % 3) {
-                                    0 -> MaterialTheme.colorScheme.primary
-                                    1 -> MaterialTheme.colorScheme.secondary
-                                    else -> MaterialTheme.colorScheme.tertiary
+                // Activity Details Header
+                Text(
+                    text = "Activity Details",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                )
+                // Feeding Activities
+                Text(
+                    text = "🍼 Feeding Activities",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                )
+                if (feedings.isEmpty()) {
+                    Row(Modifier.padding(start = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("🍼", fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        Spacer(Modifier.width(8.dp))
+                        Text("No feeding records yet.", color = Color.Gray)
+                    }
+                } else {
+                    feedings.forEach { feeding ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Type: ${feeding.feedingType}", fontWeight = FontWeight.Bold)
+                                feeding.amount?.let { Text("Amount: $it ${feeding.amountUnit ?: ""}") }
+                                feeding.side?.let { Text("Side: $it") }
+                                Text("Duration: ${if (feeding.durationMinutes >= 60) "${feeding.durationMinutes/60}h ${feeding.durationMinutes%60}m" else "${feeding.durationMinutes} min"}")
+                                Text("Time: ${dateFormat.format(Date(feeding.timestamp))}")
+                                if (!feeding.notes.isNullOrBlank()) Text("Notes: ${feeding.notes}")
+                            }
+                        }
+                    }
+                }
+                // Sleep Activities
+                Text(
+                    text = "😴 Sleep Activities",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                )
+                if (sleeps.isEmpty()) {
+                    Row(Modifier.padding(start = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("😴", fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        Spacer(Modifier.width(8.dp))
+                        Text("No sleep records yet.", color = Color.Gray)
+                    }
+                } else {
+                    sleeps.forEach { sleep ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Duration: ${if (sleep.durationMinutes >= 60) "${sleep.durationMinutes/60}h ${sleep.durationMinutes%60}m" else "${sleep.durationMinutes} min"}")
+                                Text("Location: ${sleep.sleepLocation ?: "Unknown"}")
+                                Text("Type: ${if (sleep.isNap) "Nap" else "Night"}")
+                                sleep.endTime?.toLong()?.let { Text("Time: ${dateFormat.format(Date(it))}") }
+                                if (!sleep.notes.isNullOrBlank()) Text("Notes: ${sleep.notes}")
+                            }
+                        }
+                    }
+                }
+                // Diaper Activities
+                Text(
+                    text = "🧷 Diaper Activities",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                )
+                if (diapers.isEmpty()) {
+                    Row(Modifier.padding(start = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("🧷", fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        Spacer(Modifier.width(8.dp))
+                        Text("No diaper records yet.", color = Color.Gray)
+                    }
+                } else {
+                    diapers.forEach { diaper ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Type: ${diaper.type}", fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${diaper.color ?: "Unknown"}", modifier = Modifier.padding(end = 8.dp))
+                                    Text("${diaper.consistency ?: "Unknown"}")
                                 }
-                            )
+                                Text("Time: ${dateFormat.format(Date(diaper.timestamp))}")
+                                if (!diaper.notes.isNullOrBlank()) Text("Notes: ${diaper.notes}")
+                            }
                         }
                     }
                 }
+                // Health Activities
+                Text(
+                    text = "🩺 Health Activities",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                )
+                if (healthEntries.isEmpty()) {
+                    Row(Modifier.padding(start = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("🩺", fontSize = MaterialTheme.typography.titleLarge.fontSize)
+                        Spacer(Modifier.width(8.dp))
+                        Text("No health records yet.", color = Color.Gray)
+                    }
+                } else {
+                    healthEntries.forEach { health ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Type: ${health.metricType}", fontWeight = FontWeight.Bold)
+                                Text("Value: ${health.value} ${health.unit}")
+                                health.medicationName?.let { Text("Medication: $it") }
+                                Text("Time: ${dateFormat.format(Date(health.timestamp))}")
+                                if (!health.notes.isNullOrBlank()) Text("Notes: ${health.notes}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
-                Spacer(modifier = Modifier.height(32.dp))
+@Composable
+fun ActivityAnalyticsSummary(
+    feedings: List<Feeding>,
+    sleeps: List<Sleep>,
+    diapers: List<Diaper>,
+    healthEntries: List<Health>
+) {
+    // Find earliest activity date
+    val allTimestamps = (feedings.map { it.timestamp } + sleeps.map { it.endTime } + diapers.map { it.timestamp } + healthEntries.map { it.timestamp }).filterNotNull()
+    val minTimestamp = allTimestamps.minOrNull() ?: System.currentTimeMillis()
+    val today = Calendar.getInstance().apply { timeInMillis = System.currentTimeMillis() }
+    val startDay = Calendar.getInstance().apply { timeInMillis = minTimestamp }
+    val days = ((today.timeInMillis - startDay.timeInMillis) / (24 * 60 * 60 * 1000L)).toInt() + 1
+    val millisInDay = 24 * 60 * 60 * 1000L
+    val dayLabels = (0 until days).map { i ->
+        val date = Date(startDay.timeInMillis + i * millisInDay)
+        SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
+    }
+    val feedingCounts = (0 until days).map { i ->
+        val start = startDay.timeInMillis + i * millisInDay
+        val end = start + millisInDay
+        feedings.count { it.timestamp in start until end }
+    }
+    val sleepCounts = (0 until days).map { i ->
+        val start = startDay.timeInMillis + i * millisInDay
+        val end = start + millisInDay
+        sleeps.count { it.endTime in start until end }
+    }
+    val diaperCounts = (0 until days).map { i ->
+        val start = startDay.timeInMillis + i * millisInDay
+        val end = start + millisInDay
+        diapers.count { it.timestamp in start until end }
+    }
+    val healthCounts = (0 until days).map { i ->
+        val start = startDay.timeInMillis + i * millisInDay
+        val end = start + millisInDay
+        healthEntries.count { it.timestamp in start until end }
+    }
+    val maxCount = listOf(feedingCounts, sleepCounts, diaperCounts, healthCounts).flatten().maxOrNull()?.coerceAtLeast(1) ?: 1
+    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+        Text("📊 Activity Analytics", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        // Color legend
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(16.dp).background(Color(0xFF90CAF9)))
+                Spacer(Modifier.width(4.dp))
+                Text("🍼 Feeding", style = MaterialTheme.typography.labelMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(16.dp).background(Color(0xFFA5D6A7)))
+                Spacer(Modifier.width(4.dp))
+                Text("😴 Sleep", style = MaterialTheme.typography.labelMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(16.dp).background(Color(0xFFFFF59D)))
+                Spacer(Modifier.width(4.dp))
+                Text("🧷 Diaper", style = MaterialTheme.typography.labelMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(16.dp).background(Color(0xFFCE93D8)))
+                Spacer(Modifier.width(4.dp))
+                Text("🩺 Health", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        // Chart
+        for (i in 0 until days) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(dayLabels[i], modifier = Modifier.width(70.dp), style = MaterialTheme.typography.labelSmall)
+                // Feeding bar
+                Box(
+                    Modifier
+                        .height(16.dp)
+                        .width((feedingCounts[i] * 40 / maxCount).dp)
+                        .background(Color(0xFF90CAF9)),
+                )
+                Spacer(Modifier.width(4.dp))
+                // Sleep bar
+                Box(
+                    Modifier
+                        .height(16.dp)
+                        .width((sleepCounts[i] * 40 / maxCount).dp)
+                        .background(Color(0xFFA5D6A7)),
+                )
+                Spacer(Modifier.width(4.dp))
+                // Diaper bar
+                Box(
+                    Modifier
+                        .height(16.dp)
+                        .width((diaperCounts[i] * 40 / maxCount).dp)
+                        .background(Color(0xFFFFF59D)),
+                )
+                Spacer(Modifier.width(4.dp))
+                // Health bar
+                Box(
+                    Modifier
+                        .height(16.dp)
+                        .width((healthCounts[i] * 40 / maxCount).dp)
+                        .background(Color(0xFFCE93D8)),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("${feedingCounts[i]}/${sleepCounts[i]}/${diaperCounts[i]}/${healthCounts[i]}", style = MaterialTheme.typography.labelSmall)
             }
         }
     }

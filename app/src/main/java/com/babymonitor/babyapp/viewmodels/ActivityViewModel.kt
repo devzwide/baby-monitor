@@ -11,6 +11,7 @@ import com.babymonitor.babyapp.models.Sleep
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import java.util.Date
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,6 +32,7 @@ class ActivityViewModel : ViewModel() {
     private var sleepListener: ListenerRegistration? = null
     private var diaperListener: ListenerRegistration? = null
     private var healthListener: ListenerRegistration? = null
+    private var scheduledListener: ListenerRegistration? = null
 
     private val _currentBabyId = MutableStateFlow<String?>(null)
     val currentBabyId: StateFlow<String?> = _currentBabyId
@@ -132,6 +134,9 @@ class ActivityViewModel : ViewModel() {
                 }
                 refreshData() // Refresh suggestions after updating health entries
             }
+
+        // Scheduled activities listener
+        registerScheduledListener(uid)
     }
 
     private fun removeAllListeners() {
@@ -139,10 +144,12 @@ class ActivityViewModel : ViewModel() {
         sleepListener?.remove()
         diaperListener?.remove()
         healthListener?.remove()
+        scheduledListener?.remove()
         feedingListener = null
         sleepListener = null
         diaperListener = null
         healthListener = null
+        scheduledListener = null
     }
 
     private fun clearLocalCaches() {
@@ -209,13 +216,14 @@ class ActivityViewModel : ViewModel() {
                 if (user != null && _currentBabyId.value != null) {
                     val diaperWithIds = diaper.copy(
                         entryID = db.collection("users").document().id,
-                        babyID = _currentBabyId.value!!
+                        babyID = _currentBabyId.value!!,
+                        timestamp = System.currentTimeMillis()
                     )
                     db.collection("users").document(user.uid)
                         .collection("diapers")
                         .document(diaperWithIds.entryID)
                         .set(diaperWithIds)
-                        .addOnSuccessListener { callback(Result.success(Unit)) }
+                        .addOnSuccessListener { callback(Result.success(Unit)); refreshAllData() }
                         .addOnFailureListener { e -> callback(Result.failure(e)) }
                 } else {
                     callback(Result.failure(Exception("User or baby ID missing")))
@@ -250,6 +258,99 @@ class ActivityViewModel : ViewModel() {
         }
     }
 
+    // Scheduling model for activities
+    data class ScheduledActivity(
+        val id: String = "",
+        val babyID: String = "",
+        val type: String = "", // feeding, sleep, diaper
+        val scheduledTime: Long = 0L,
+        val notes: String? = null
+    )
+
+    val scheduledActivities = mutableStateListOf<ScheduledActivity>()
+
+    // Add a scheduled activity
+    fun scheduleActivity(type: String, scheduledTime: Long, notes: String? = null, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                val babyId = _currentBabyId.value
+                if (user != null && babyId != null) {
+                    val id = db.collection("users").document().id
+                    val scheduled = ScheduledActivity(id, babyId, type, scheduledTime, notes)
+                    db.collection("users").document(user.uid)
+                        .collection("scheduledActivities")
+                        .document(id)
+                        .set(scheduled)
+                        .addOnSuccessListener { callback(Result.success(Unit)); refreshScheduledActivities() }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User or baby ID missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    // Remove a scheduled activity
+    fun removeScheduledActivity(id: String, callback: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null) {
+                    db.collection("users").document(user.uid)
+                        .collection("scheduledActivities")
+                        .document(id)
+                        .delete()
+                        .addOnSuccessListener { callback(Result.success(Unit)); refreshScheduledActivities() }
+                        .addOnFailureListener { e -> callback(Result.failure(e)) }
+                } else {
+                    callback(Result.failure(Exception("User missing")))
+                }
+            } catch (e: Exception) {
+                callback(Result.failure(e))
+            }
+        }
+    }
+
+    // Listener for scheduled activities
+    private fun registerScheduledListener(uid: String) {
+        scheduledListener?.remove()
+        val babyId = _currentBabyId.value
+        if (babyId.isNullOrEmpty()) return
+        scheduledListener = db.collection("users").document(uid)
+            .collection("scheduledActivities")
+            .whereEqualTo("babyID", babyId)
+            .orderBy("scheduledTime", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                scheduledActivities.clear()
+                snapshot?.documents?.forEach { doc ->
+                    val scheduled = doc.toObject(ScheduledActivity::class.java)
+                    if (scheduled != null) scheduledActivities.add(scheduled)
+                }
+            }
+    }
+
+    // Refresh scheduled activities
+    fun refreshScheduledActivities() {
+        val user = auth.currentUser
+        val babyId = _currentBabyId.value
+        if (user != null && babyId != null) {
+            db.collection("users").document(user.uid)
+                .collection("scheduledActivities")
+                .whereEqualTo("babyID", babyId)
+                .orderBy("scheduledTime", com.google.firebase.firestore.Query.Direction.ASCENDING)
+                .get().addOnSuccessListener { snapshot ->
+                    scheduledActivities.clear()
+                    snapshot.documents.forEach { doc ->
+                        doc.toObject(ScheduledActivity::class.java)?.let { scheduledActivities.add(it) }
+                    }
+                }
+        }
+    }
+
     // Helper functions to get latest entries
     fun getLatestFeeding(): Feeding? = feedings.firstOrNull()
     fun getLatestSleep(): Sleep? = sleeps.firstOrNull()
@@ -276,8 +377,21 @@ class ActivityViewModel : ViewModel() {
         }
     }
 
+    public val diaperColorStats = mutableStateOf<Map<String, Int>>(emptyMap())
+    public val diaperConsistencyStats = mutableStateOf<Map<String, Int>>(emptyMap())
+    public val diaperFrequency24h = mutableStateOf(0)
+
+    private fun updateDiaperAnalytics() {
+        val last24h = System.currentTimeMillis() - 24 * 60 * 60 * 1000
+        val diapers24h = diapers.filter { it.timestamp > last24h }
+        diaperFrequency24h.value = diapers24h.size
+        diaperColorStats.value = diapers24h.groupingBy { it.color ?: "UNKNOWN" }.eachCount()
+        diaperConsistencyStats.value = diapers24h.groupingBy { it.consistency ?: "UNKNOWN" }.eachCount()
+    }
+
     // Call this after listeners update local lists
     private fun refreshData() {
+        updateDiaperAnalytics()
         generateSuggestions()
         // ...other refresh logic if needed...
     }

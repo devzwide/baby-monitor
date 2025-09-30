@@ -72,6 +72,7 @@ fun FeedingLogger(onSave: (Feeding) -> Unit) {
     var notes by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("BOTTLE") }
+    var duration by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -143,6 +144,18 @@ fun FeedingLogger(onSave: (Feeding) -> Unit) {
             )
         )
 
+        // Duration Input
+        OutlinedTextField(
+            value = duration,
+            onValueChange = { duration = it },
+            label = { Text("DURATION (MINUTES)", fontWeight = FontWeight.Medium) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+            )
+        )
+
         // Notes Input
         OutlinedTextField(
             value = notes,
@@ -158,21 +171,18 @@ fun FeedingLogger(onSave: (Feeding) -> Unit) {
         // Save Button
         Button(
             onClick = {
-                onSave(Feeding(feedingType = type, amount = amount.toDoubleOrNull(), notes = notes, timestamp = System.currentTimeMillis()))
+                val feeding = Feeding(
+                    feedingType = type,
+                    amount = amount.toDoubleOrNull(),
+                    amountUnit = "ml",
+                    durationMinutes = duration.toIntOrNull() ?: 0,
+                    notes = notes
+                )
+                onSave(feeding)
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                "SAVE FEEDING RECORD",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Text("SAVE FEEDING", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -181,6 +191,19 @@ fun FeedingLogger(onSave: (Feeding) -> Unit) {
 fun DiaperLogger(onSave: (Diaper) -> Unit) {
     var notes by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("WET") }
+    var color by remember { mutableStateOf("") }
+    var consistency by remember { mutableStateOf("") }
+    var shouldReset by remember { mutableStateOf(false) }
+
+    if (shouldReset) {
+        LaunchedEffect(Unit) {
+            notes = ""
+            type = "WET"
+            color = ""
+            consistency = ""
+            shouldReset = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -209,7 +232,6 @@ fun DiaperLogger(onSave: (Diaper) -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-
                 Row(modifier = Modifier.fillMaxWidth()) {
                     listOf("WET", "DIRTY", "MIXED").forEach { diaperType ->
                         FilterChip(
@@ -230,6 +252,74 @@ fun DiaperLogger(onSave: (Diaper) -> Unit) {
             }
         }
 
+        // Color Selection
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "COLOR",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    listOf("YELLOW", "BROWN", "GREEN", "OTHER").forEach { option ->
+                        FilterChip(
+                            selected = color == option,
+                            onClick = { color = option },
+                            label = { Text(option) },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onTertiary,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        if (option != "OTHER") Spacer(modifier = Modifier.width(12.dp))
+                    }
+                }
+            }
+        }
+
+        // Consistency Selection (only for dirty/mixed)
+        if (type != "WET") {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        "CONSISTENCY",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        listOf("SOLID", "SOFT", "LOOSE", "WATERY").forEach { option ->
+                            FilterChip(
+                                selected = consistency == option,
+                                onClick = { consistency = option },
+                                label = { Text(option) },
+                                modifier = Modifier.weight(1f),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onTertiary,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            if (option != "WATERY") Spacer(modifier = Modifier.width(12.dp))
+                        }
+                    }
+                }
+            }
+        }
+
         // Notes Input
         OutlinedTextField(
             value = notes,
@@ -244,7 +334,18 @@ fun DiaperLogger(onSave: (Diaper) -> Unit) {
 
         // Save Button
         Button(
-            onClick = { onSave(Diaper(type = type, notes = notes, timestamp = System.currentTimeMillis())) },
+            onClick = {
+                onSave(
+                    Diaper(
+                        type = type,
+                        color = color.takeIf { it.isNotEmpty() },
+                        consistency = consistency.takeIf { it.isNotEmpty() },
+                        notes = notes.takeIf { it.isNotEmpty() },
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+                shouldReset = true
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),

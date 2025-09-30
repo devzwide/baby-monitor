@@ -23,6 +23,9 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
     var errorMessage by remember { mutableStateOf("") }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    val resetResult = authViewModel.resetPasswordResult.value
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
@@ -156,7 +159,12 @@ fun LoginScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Forgot Password Section
+                TextButton(onClick = { showResetDialog = true }) {
+                    Text("Forgot Password?")
+                }
 
                 // Sign Up Section
                 Row(
@@ -186,5 +194,43 @@ fun LoginScreen(
                 }
             }
         }
+    }
+
+    // Reset Password Dialog
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    authViewModel.sendPasswordResetEmail(resetEmail)
+                }) {
+                    Text("Send Reset Email")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Reset Password") },
+            text = {
+                Column {
+                    Text("Enter your email to receive a password reset link.")
+                    OutlinedTextField(
+                        value = resetEmail,
+                        onValueChange = { resetEmail = it },
+                        label = { Text("Email") },
+                        singleLine = true
+                    )
+                    if (resetResult != null) {
+                        if (resetResult.isSuccess) {
+                            Text(resetResult.getOrNull() ?: "", color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Text(resetResult.exceptionOrNull()?.localizedMessage ?: "Error", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+        )
     }
 }

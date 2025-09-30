@@ -22,6 +22,7 @@ import com.babymonitor.babyapp.models.Feeding
 import com.babymonitor.babyapp.models.Health
 import com.babymonitor.babyapp.models.Parent
 import com.babymonitor.babyapp.models.Sleep
+import com.babymonitor.babyapp.viewmodels.ActivityViewModel
 
 // Data class for the summary grid items
 data class SummaryItem(
@@ -29,6 +30,12 @@ data class SummaryItem(
     val value: String,
     val backgroundColor: Color,
     val textColor: Color
+)
+
+data class AnalyticalSummary(
+    val label: String,
+    val value: String,
+    val details: List<String> = emptyList()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,7 +239,7 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                // DiaperAnalyticsSection(viewModel) // Uncomment when ViewModel is available
             }
         }
     }
@@ -270,7 +277,7 @@ fun MonitorStatusSection(babyName: String) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "$babyName's Photo Gallery",
+                text = "Baby Photo Gallery",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -349,6 +356,70 @@ fun MetricCard(item: SummaryItem) {
             )
 
             // Subtle status indicator
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(
+                        color = item.textColor.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.small
+                    )
+            )
+        }
+    }
+}
+
+@Composable
+fun AnalyticalMetricCard(
+    item: SummaryItem,
+    analytics: AnalyticalSummary
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.2f),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = item.backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = item.textColor,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = item.value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = analytics.label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = item.textColor
+            )
+            Text(
+                text = analytics.value,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            analytics.details.forEach {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
