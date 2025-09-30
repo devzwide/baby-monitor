@@ -37,7 +37,7 @@ baby-monitor/
 ## Setup Instructions
 1. **Clone the repository:**
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/devzwide/baby-monitor.git
    cd baby-monitor
    ```
 2. **Open in Android Studio:**
